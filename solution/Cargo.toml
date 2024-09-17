@@ -11,6 +11,7 @@ predicates = "1"
 
 [dependencies]
 rand = "0.7"
+colored = "2.0"
 
 [dependencies.nom]
 version = "5"
