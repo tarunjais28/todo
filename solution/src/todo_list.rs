@@ -13,6 +13,10 @@ impl Index {
     pub fn value(&self) -> u64 {
         self.0
     }
+
+    pub fn increement(&mut self) {
+        self.0 += 1;
+    }
 }
 
 impl fmt::Display for Index {
@@ -36,7 +40,7 @@ impl Description {
 
 impl fmt::Display for Description {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:?}", self.0)
     }
 }
 
@@ -53,7 +57,7 @@ impl Tag {
     }
 
     pub fn from_strings(ss: Vec<&str>) -> Vec<Tag> {
-        ss.clone().into_iter().map(|s| Tag::new(s)).collect()
+        ss.into_iter().map(Tag::new).collect()
     }
 }
 
@@ -72,12 +76,12 @@ pub struct TodoItem {
 }
 
 impl TodoItem {
-    pub fn new(index: Index, description: Description, tags: Vec<Tag>, done: bool) -> TodoItem {
+    pub fn new(index: Index, description: Description, tags: Vec<Tag>) -> TodoItem {
         TodoItem {
             index,
             description,
             tags,
-            done,
+            done: false,
         }
     }
 }
@@ -103,14 +107,59 @@ impl TodoList {
     }
 
     pub fn push(&mut self, description: Description, tags: Vec<Tag>) -> TodoItem {
-        unimplemented!();
+        let item = TodoItem::new(self.top_index, description, tags);
+        self.items.push(item.to_owned());
+        self.top_index.increement();
+        item
     }
 
-    pub fn done_with_index(&mut self, idx: Index) -> Option<Index> {
-        unimplemented!();
+    pub fn done_with_index(&mut self, idx: Index, cl: &mut Vec<TodoItem>) -> Option<Index> {
+        if self.items.get(idx.value() as usize).is_some() {
+            // Moving item to completed list
+            let mut item = self.items.remove(idx.value() as usize);
+            item.done = true;
+            cl.push(item);
+            Some(idx)
+        } else {
+            None
+        }
     }
 
     pub fn search(&self, sp: SearchParams) -> Vec<&TodoItem> {
-        unimplemented!();
+        let mut items: Vec<&TodoItem> = Vec::new();
+        
+        if sp.words.is_empty() && sp.tags.is_empty() {
+            self.items.iter().all(|item| {
+                items.push(item);
+                true
+            });
+        }
+
+        for words in sp.words {
+            items = self
+                .items
+                .iter()
+                .filter(|item| item.description.value().contains(words.value()))
+                .collect();
+        }
+
+        for tag in sp.tags {
+            items.extend(
+                self.items
+                    .iter()
+                    .filter(|item| item.tags.contains(&tag) && !items.contains(item))
+                    .collect::<Vec<&TodoItem>>(),
+            );
+        }
+
+        items.reverse();
+
+        items
+    }
+}
+
+impl Default for TodoList {
+    fn default() -> Self {
+        Self::new()
     }
 }

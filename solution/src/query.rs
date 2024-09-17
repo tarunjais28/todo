@@ -21,16 +21,20 @@ impl SearchWord {
     pub fn new(s: &str) -> SearchWord {
         SearchWord(s.to_owned())
     }
+
+    pub fn value(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum QueryResult {
+pub enum QueryResult<'a> {
     Added(TodoItem),
     Done,
-    Found(Vec<todo_list::TodoItem>),
+    Found(Vec<&'a todo_list::TodoItem>),
 }
 
-impl fmt::Display for QueryResult {
+impl<'a> fmt::Display for QueryResult<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
             QueryResult::Added(ti) => write!(f, "{}", ti.index),
@@ -38,8 +42,16 @@ impl fmt::Display for QueryResult {
             QueryResult::Found(rs) => {
                 let mut buff: Vec<String> = vec![];
                 buff.push(format!("{} item(s) found", rs.len()));
-                for i in rs {
-                    buff.push(format!("{:?}", i));
+                let mut tags = String::new();
+                for items in rs {
+                    items.tags.iter().all(|tag| {
+                        tags.push('#');
+                        tags.push_str(&tag.to_string());
+                        tags.push(' ');
+                        true
+                    });
+                    buff.push(format!("{} {} {}", items.index, items.description, tags));
+                    tags.clear();
                 }
                 write!(f, "{}", buff.join("\n"))
             }
