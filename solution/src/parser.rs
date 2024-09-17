@@ -110,8 +110,8 @@ fn search_word_or_tag(input: &str) -> IResult<&str, SearchWordOrTag> {
     match alt((raw_tag, raw_word))(input) {
         Err(e) => Err(e),
         Ok((rest, wot)) => {
-            if wot.starts_with("#") {
-                Ok((rest, SearchWordOrTag::RawTag(wot[1..].to_string())))
+            if let Some(s) = wot.strip_prefix("#") {
+                Ok((rest, SearchWordOrTag::RawTag(s.to_string())))
             } else {
                 Ok((rest, SearchWordOrTag::RawWord(wot.to_string())))
             }
@@ -128,6 +128,7 @@ fn mash_to_query(mash: Vec<SearchWordOrTag>) -> Query {
             SearchWordOrTag::RawTag(t) => tags.push(Tag::new(&t)),
         }
     }
+
     Query::Search(SearchParams {
         words: search_words,
         tags,
