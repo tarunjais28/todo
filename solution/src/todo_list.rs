@@ -1,8 +1,8 @@
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 use crate::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Index(u64);
 
 impl Index {
@@ -86,12 +86,6 @@ impl TodoItem {
     }
 }
 
-impl fmt::Display for TodoItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}, {:?}", self.index, self.description, self.tags)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TodoList {
     top_index: Index,
@@ -99,67 +93,211 @@ pub struct TodoList {
 }
 
 impl TodoList {
-    pub fn new() -> TodoList {
+    pub fn new(capacity: usize) -> TodoList {
         TodoList {
             top_index: Index::new(0),
-            items: vec![],
+            items: Vec::with_capacity(capacity),
         }
     }
 
-    pub fn push(&mut self, description: Description, tags: Vec<Tag>) -> TodoItem {
-        let item = TodoItem::new(self.top_index, description, tags);
-        self.items.push(item.to_owned());
+    pub fn push(&mut self, description: Description, tags: Vec<Tag>) -> Index {
+        let idx = self.top_index;
+        let item = TodoItem::new(idx, description, tags);
+        self.items.push(item);
         self.top_index.increement();
-        item
+        idx
     }
 
-    pub fn done_with_index(&mut self, idx: Index, cl: &mut Vec<TodoItem>) -> Option<Index> {
-        if self.items.get(idx.value() as usize).is_some() {
-            // Moving item to completed list
-            let mut item = self.items.remove(idx.value() as usize);
+    pub fn done_with_index(&mut self, idx: Index) -> Option<Index> {
+        if let Some(item) = self.items.get_mut(idx.value() as usize) {
             item.done = true;
-            cl.push(item);
             Some(idx)
         } else {
             None
         }
     }
 
-    pub fn search(&self, sp: SearchParams) -> Vec<&TodoItem> {
-        let mut items: Vec<&TodoItem> = Vec::new();
-        
+    pub fn search(&self, sp: SearchParams) -> Vec<Index> {
+        let mut indices: HashSet<Index> = HashSet::new();
+        let mut cw;
+        let mut fw;
+
+        // Case 1: When both search words and search tags are missing
         if sp.words.is_empty() && sp.tags.is_empty() {
-            self.items.iter().all(|item| {
-                items.push(item);
-                true
+            self.items.iter().for_each(|item| {
+                indices.insert(item.index);
             });
+            return indices.into_iter().collect();
         }
 
-        for words in sp.words {
-            items = self
-                .items
-                .iter()
-                .filter(|item| item.description.value().contains(words.value()))
-                .collect();
-        }
+        for item in &self.items {
+            cw = 0;
+            fw = 0;
 
-        for tag in sp.tags {
-            items.extend(
-                self.items
+            // Case 2: When only searching with words
+            if !sp.words.is_empty() && sp.tags.is_empty() {
+                cw = sp.words.len();
+                sp.words.iter().all(|word| {
+                    find_words(item.description.value(), word.value(), &mut fw, item.done)
+                });
+            }
+
+            // Case 3: When only searching with tags
+            if sp.words.is_empty() && !sp.tags.is_empty() {
+                cw = sp.tags.len();
+                sp.tags
                     .iter()
-                    .filter(|item| item.tags.contains(&tag) && !items.contains(item))
-                    .collect::<Vec<&TodoItem>>(),
-            );
+                    .all(|tag| find_tags(&item.tags, tag, &mut fw, item.done));
+            }
+
+            // Case 4: When searching with both words and tags
+            if !sp.words.is_empty() && !sp.tags.is_empty() {
+                // Iterating for words match
+                sp.words.iter().all(|word| {
+                    find_words(item.description.value(), word.value(), &mut cw, item.done)
+                });
+
+                // Iterating for tags match
+                sp.tags
+                    .iter()
+                    .all(|tag| find_tags(&item.tags, tag, &mut fw, item.done));
+            }
+            if fw == cw && fw > 0 {
+                indices.insert(item.index);
+            }
         }
 
-        items.reverse();
-
-        items
+        indices.into_iter().collect()
     }
 }
 
-impl Default for TodoList {
-    fn default() -> Self {
-        Self::new()
+/// Notes: 
+/// This two functions `find_word()` and `find_tags()` takes can be merged
+/// to single function, but due to performance constraint they are being 
+/// splitted to multiple funtions.
+///
+/// fn find_subsequence_in_items<F, T>(
+///     items: &[T],
+///     target: &T,
+///     extract_fn: F,
+///     counter: &mut usize,
+///     is_done: bool,
+/// ) -> bool
+/// where
+///     F: Fn(&T) -> &str,
+/// {
+///     if is_done {
+///         return false;
+///     }
+/// 
+///     let target_chars: Vec<char> = extract_fn(target).chars().collect();
+///     let mut target_iter = target_chars.iter();
+///     let mut target_item = target_iter.next();
+/// 
+///     for item in items {
+///         let item_str = extract_fn(item);
+///         // println!("{}", format!("{}", item_str).yellow());
+/// 
+///         // Try to match each character in the target
+///         for ch in item_str.chars() {
+///             if let Some(&c) = target_item {
+///                 // println!("{}", &format!("{c}").blue());
+///                 // println!("{}", &format!("{ch}").red());
+///                 if c == ch {
+///                     target_item = target_iter.next();
+///                 }
+///             }
+/// 
+///             // If we've iterated through all items in the subsequence, it means the subsequence was found
+///             if target_item.is_none() {
+///                 *counter += 1;
+///                 return true;
+///             }
+///         }
+/// 
+///         // Reset target iteration for the next item
+///         target_iter = target_chars.iter();
+///         target_item = target_iter.next();
+///     }
+/// 
+///     false
+/// }
+/// 
+/// fn main() {
+///     // Iterating over words
+///     sp.words.iter().all(|word| {
+///     find_subsequence_in_items(
+///         &item
+///             .description
+///             .value()
+///             .split_whitespace()
+///             .collect::<Vec<&str>>(),
+///         &word.value(),
+///         |s| s,
+///         &mut fw,
+///         item.done,
+///     )
+///   });
+/// 
+/// // Iterating over tags
+///     sp.tags.iter().all(|tag| {
+///         find_subsequence_in_items(&item.tags, tag, |t| t.value(), &mut fw, item.done)
+///     });
+/// }
+fn find_words(sentence: &str, word: &str, counter: &mut usize, is_done: bool) -> bool {
+    if is_done {
+        return false;
     }
+
+    let mut word_iter = word.chars();
+    let mut word_item = word_iter.next();
+    for sen in sentence.split_whitespace() {
+        // Try to match each character in word
+        for ch in sen.chars() {
+            if let Some(c) = word_item {
+                if c == ch {
+                    word_item = word_iter.next();
+                }
+            }
+
+            // If we've iterated through all items in the subsequence, it means the subsequence was found
+            if word_item.is_none() {
+                *counter += 1;
+                return true;
+            }
+        }
+        // Reset iteration for the next item
+        word_iter = word.chars();
+        word_item = word_iter.next();
+    }
+    false
+}
+
+fn find_tags(tags: &[Tag], tag: &Tag, counter: &mut usize, is_done: bool) -> bool {
+    if is_done {
+        return false;
+    }
+    let mut word_iter = tag.value().chars();
+    let mut word_item = word_iter.next();
+
+    for tag in tags {
+        // Try to match each character in word
+        for ch in tag.value().chars() {
+            if let Some(c) = word_item {
+                if c == ch {
+                    word_item = word_iter.next();
+                }
+            }
+
+            // If we've iterated through all items in the subsequence, it means the subsequence was found
+            if word_item.is_none() {
+                *counter += 1;
+                return true;
+            }
+        }
+        // Reset iteration for the next item
+        word_iter = tag.value().chars();
+        word_item = word_iter.next();
+    }
+    false
 }

@@ -28,31 +28,23 @@ impl SearchWord {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum QueryResult<'a> {
-    Added(TodoItem),
+pub enum QueryResult {
+    Added(Index),
     Done,
-    Found(Vec<&'a todo_list::TodoItem>),
+    Found(Vec<Index>),
 }
 
-impl<'a> fmt::Display for QueryResult<'a> {
+impl fmt::Display for QueryResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self {
-            QueryResult::Added(ti) => write!(f, "{}", ti.index),
+            QueryResult::Added(idx) => write!(f, "{}", idx),
             QueryResult::Done => write!(f, "done"),
             QueryResult::Found(rs) => {
                 let mut buff: Vec<String> = vec![];
                 buff.push(format!("{} item(s) found", rs.len()));
-                let mut tags = String::new();
-                for items in rs {
-                    items.tags.iter().all(|tag| {
-                        tags.push('#');
-                        tags.push_str(&tag.to_string());
-                        tags.push(' ');
-                        true
-                    });
-                    buff.push(format!("{} {} {}", items.index, items.description, tags));
-                    tags.clear();
-                }
+                rs.iter().for_each(|idx| {
+                    buff.push(idx.value().to_string());
+                });
                 write!(f, "{}", buff.join("\n"))
             }
         }
