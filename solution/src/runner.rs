@@ -14,8 +14,8 @@ pub fn run_line(line: &str, tl: &mut TodoList) -> Option<String> {
 fn run_query(q: Query, tl: &mut TodoList) -> Result<QueryResult, QueryError> {
     match q {
         Query::Add(desc, tags) => {
-            let item = tl.push(desc, tags);
-            Ok(QueryResult::Added(item))
+            let idx = tl.push(desc, tags);
+            Ok(QueryResult::Added(idx))
         }
         Query::Done(idx) => {
             tl.done_with_index(idx);

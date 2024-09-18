@@ -1,4 +1,3 @@
-use colored::*;
 use std::io::{self, prelude::*};
 use std::time::Instant;
 
@@ -25,10 +24,7 @@ pub fn main() {
         inputs.push(line);
     }
     let duration = start.elapsed();
-    println!(
-        "{}",
-        &format!("Time taken for read: {:?}", duration).yellow()
-    );
+    println!("{}", &format!("Time taken for read: {:?}", duration));
 
     let start = Instant::now();
     // Buffer to store the results
@@ -41,10 +37,7 @@ pub fn main() {
         }
     }
     let duration = start.elapsed();
-    println!(
-        "{}",
-        &format!("Time taken for process: {:?}", duration).yellow()
-    );
+    println!("{}", &format!("Time taken for process: {:?}", duration));
 
     let start = Instant::now();
     // Output results in one go
@@ -52,16 +45,8 @@ pub fn main() {
         println!("{}", output);
     }
     let duration = start.elapsed();
-    println!(
-        "{}",
-        &format!("Time taken for write: {:?}", duration).yellow()
-    );
+    println!("{}", &format!("Time taken for write: {:?}", duration));
 
     let duration_main = start_main.elapsed();
-    println!(
-        "{}",
-        &format!("Time taken for main: {:?}", duration_main)
-            .green()
-            .bold()
-    );
+    println!("{}", &format!("Time taken for main: {:?}", duration_main));
 }
