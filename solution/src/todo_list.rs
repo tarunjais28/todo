@@ -1,6 +1,7 @@
 use crate::*;
 use rayon::prelude::*;
 use std::{collections::HashSet, fmt};
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Index(u64);
@@ -86,30 +87,41 @@ impl TodoItem {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct TodoList {
-    top_index: Index,
-    items: Vec<TodoItem>,
+    top_index: Arc<Mutex<Index>>,
+    items: Arc<Mutex<Vec<TodoItem>>>,
 }
 
 impl TodoList {
     pub fn new(capacity: usize) -> TodoList {
         TodoList {
-            top_index: Index::new(0),
-            items: Vec::with_capacity(capacity),
+            top_index: Arc::new(Mutex::new(Index::new(0))),
+            items: Arc::new(Mutex::new(Vec::with_capacity(capacity))),
         }
     }
 
-    pub fn push(&mut self, description: Description, tags: Vec<Tag>) -> Index {
-        let idx = self.top_index;
-        let item = TodoItem::new(idx, description, tags);
-        self.items.push(item);
-        self.top_index.increement();
-        idx
-    }
+    pub fn push(&self, description: Description, tags: Vec<Tag>) -> Index {
+        let mut top_index = self.top_index.lock().unwrap();
+        let idx = top_index.clone(); // Assuming Index implements Clone
+        let item = TodoItem::new(idx.clone(), description, tags);
 
-    pub fn done_with_index(&mut self, idx: Index) -> Option<Index> {
-        if let Some(item) = self.items.get_mut(idx.value() as usize) {
+        // Lock items vector and push the new item
+        let mut items = self.items.lock().unwrap();
+        items.push(item);
+
+        top_index.increement(); // Update the top_index
+        idx
+    }   
+
+    pub fn done_with_index(&self, idx: Index) -> Option<Index> {
+        let item_idx = idx.value() as usize;
+
+        // Lock items vector to safely access and modify it
+        let mut items = self.items.lock().unwrap();
+
+        if item_idx < items.len() {
+            let item = &mut items[item_idx];
             item.done = true;
             Some(idx)
         } else {
@@ -122,14 +134,14 @@ impl TodoList {
 
         // Case 1: When both search words and search tags are missing
         if sp.words.is_empty() && sp.tags.is_empty() {
-            self.items.iter().for_each(|item| {
-                indices.insert(item.index);
+            self.items.lock().unwrap().iter().for_each(|item| {
+        indices.insert(item.index);
             });
             return indices.into_iter().collect();
         }
 
-        self.items
-            .par_iter()
+        self.items.lock().unwrap()
+            .par_iter() 
             .filter_map(|item| {
                 let mut cw = 0;
                 let mut fw = 0;
@@ -195,13 +207,10 @@ impl TodoList {
 ///
 ///     for item in items {
 ///         let item_str = extract_fn(item);
-///         // println!("{}", format!("{}", item_str).yellow());
 ///
 ///         // Try to match each character in the target
 ///         for ch in item_str.chars() {
 ///             if let Some(&c) = target_item {
-///                 // println!("{}", &format!("{c}").blue());
-///                 // println!("{}", &format!("{ch}").red());
 ///                 if c == ch {
 ///                     target_item = target_iter.next();
 ///                 }
@@ -282,8 +291,8 @@ fn find_tags(tags: &[Tag], sh_tag: &Tag, counter: &mut usize, is_done: bool) -> 
     for tag in tags {
         // Try to match each character in word
         for ch in tag.value().chars() {
-            if let Some(c) = word_item {
-                if c == ch {
+        if let Some(c) = word_item {
+        if c == ch {
                     word_item = word_iter.next();
                 }
             }
