@@ -170,79 +170,79 @@ impl TodoList {
     }
 }
 
-/// Notes:
-/// This two functions `find_word()` and `find_tags()` takes can be merged
-/// to single function, but due to performance constraint they are being
-/// splitted to multiple funtions.
-///
-/// fn find_subsequence_in_items<F, T>(
-///     items: &[T],
-///     target: &T,
-///     extract_fn: F,
-///     counter: &mut usize,
-///     is_done: bool,
-/// ) -> bool
-/// where
-///     F: Fn(&T) -> &str,
-/// {
-///     if is_done {
-///         return false;
-///     }
-///
-///     let target_chars: Vec<char> = extract_fn(target).chars().collect();
-///     let mut target_iter = target_chars.iter();
-///     let mut target_item = target_iter.next();
-///
-///     for item in items {
-///         let item_str = extract_fn(item);
-///         // println!("{}", format!("{}", item_str).yellow());
-///
-///         // Try to match each character in the target
-///         for ch in item_str.chars() {
-///             if let Some(&c) = target_item {
-///                 // println!("{}", &format!("{c}").blue());
-///                 // println!("{}", &format!("{ch}").red());
-///                 if c == ch {
-///                     target_item = target_iter.next();
-///                 }
-///             }
-///
-///             // If we've iterated through all items in the subsequence, it means the subsequence was found
-///             if target_item.is_none() {
-///                 *counter += 1;
-///                 return true;
-///             }
-///         }
-///
-///         // Reset target iteration for the next item
-///         target_iter = target_chars.iter();
-///         target_item = target_iter.next();
-///     }
-///
-///     false
-/// }
-///
-/// fn main() {
-///     // Iterating over words
-///     sp.words.iter().all(|word| {
-///     find_subsequence_in_items(
-///         &item
-///             .description
-///             .value()
-///             .split_whitespace()
-///             .collect::<Vec<&str>>(),
-///         &word.value(),
-///         |s| s,
-///         &mut fw,
-///         item.done,
-///     )
-///   });
-///
-/// // Iterating over tags
-///     sp.tags.iter().all(|tag| {
-///         find_subsequence_in_items(&item.tags, tag, |t| t.value(), &mut fw, item.done)
-///     });
-/// }
+// Notes:
+// This two functions `find_word()` and `find_tags()` takes can be merged
+// to single function, but due to performance constraint they are being
+// splitted to multiple funtions.
+//
+// fn find_subsequence_in_items<F, T>(
+//     items: &[T],
+//     target: &T,
+//     extract_fn: F,
+//     counter: &mut usize,
+//     is_done: bool,
+// ) -> bool
+// where
+//     F: Fn(&T) -> &str,
+// {
+//     if is_done {
+//         return false;
+//     }
+//
+//     let target_chars: Vec<char> = extract_fn(target).chars().collect();
+//     let mut target_iter = target_chars.iter();
+//     let mut target_item = target_iter.next();
+//
+//     for item in items {
+//         let item_str = extract_fn(item);
+//         // println!("{}", format!("{}", item_str).yellow());
+//
+//         // Try to match each character in the target
+//         for ch in item_str.chars() {
+//             if let Some(&c) = target_item {
+//                 // println!("{}", &format!("{c}").blue());
+//                 // println!("{}", &format!("{ch}").red());
+//                 if c == ch {
+//                     target_item = target_iter.next();
+//                 }
+//             }
+//
+//             // If we've iterated through all items in the subsequence, it means the subsequence was found
+//             if target_item.is_none() {
+//                 *counter += 1;
+//                 return true;
+//             }
+//         }
+//
+//         // Reset target iteration for the next item
+//         target_iter = target_chars.iter();
+//         target_item = target_iter.next();
+//     }
+//
+//     false
+// }
+//
+// fn main() {
+//     // Iterating over words
+//     sp.words.iter().all(|word| {
+//     find_subsequence_in_items(
+//         &item
+//             .description
+//             .value()
+//             .split_whitespace()
+//             .collect::<Vec<&str>>(),
+//         &word.value(),
+//         |s| s,
+//         &mut fw,
+//         item.done,
+//     )
+//   });
+//
+// // Iterating over tags
+//     sp.tags.iter().all(|tag| {
+//         find_subsequence_in_items(&item.tags, tag, |t| t.value(), &mut fw, item.done)
+//     });
+// }
 fn find_words(sentence: &str, word: &str, counter: &mut usize, is_done: bool) -> bool {
     if is_done {
         return false;
